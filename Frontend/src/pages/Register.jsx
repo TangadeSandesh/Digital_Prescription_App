@@ -19,7 +19,8 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); setError(null);
+    setLoading(true); 
+    setError(null);
     try {
       const token = await registerUser(formData);
       dispatch(loginSuccess(token));
