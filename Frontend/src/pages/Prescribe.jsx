@@ -78,26 +78,40 @@ export default function Prescribe() {
     setIsGenerating(true);
 
     try {
+      const clean = (value) => (typeof value === "string" ? value.trim() : value);
+      const cleanedMedicines = medicines
+        .map((med) => ({
+          name: clean(med.name),
+          dosage: clean(med.dosage),
+          frequency: clean(med.frequency),
+          duration: clean(med.duration),
+          notes: clean(med.notes),
+        }))
+        .filter((med) => Object.values(med).some((value) => value));
+
       const payload = {
+        user_id: user?.id ?? null,
+        signature: signature || null,
+        template: selectedTemplate,
         doctor: {
           user_id: user?.id,
-          name: user?.name,
-          qualification: user?.qualification,
-          hospital: user?.hospital,
+          name: clean(user?.name),
+          qualification: clean(user?.qualification),
+          hospital: clean(user?.hospital),
           regNo: user?.regino,   // Registration Number
           state: "Maharashtra",
           signature: signature, // base64 image if available
         },
         patient: {
-          name: prescription.patientName,
-          age: prescription.age,
-          sex: prescription.sex,
+          name: clean(prescription.patientName),
+          age: clean(prescription.age),
+          sex: clean(prescription.sex),
         },
-        diagnosis: prescription.diagnosis,
-        findings: prescription.findings,
-        allergy: prescription.allergy,
-        advice: prescription.advice,
-        medicines,
+        diagnosis: clean(prescription.diagnosis),
+        findings: clean(prescription.findings),
+        allergy: clean(prescription.allergy),
+        advice: clean(prescription.advice),
+        medicines: cleanedMedicines,
       };
 
       const response = await fetchPdf(payload);

@@ -5,20 +5,45 @@ module.exports = {
   // Create a new prescription and its medicines
   create: async ({ user_id, patient_name, age, sex, diagnosis, findings, allergy, advice, signature, template, medicines }) => {
     try {
+      const clean = (value) => (typeof value === 'string' ? value.trim() : value);
+
       // 1️⃣ Insert prescription
       const prescriptionResult = await db.query(
         `INSERT INTO prescriptions 
           (user_id, patient_name, age, sex, diagnosis, findings, allergy, advice, signature, template, created_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
          RETURNING *`,
-        [user_id, patient_name, age, sex, diagnosis, findings, allergy, advice, signature, template]
+        [
+          user_id,
+          clean(patient_name),
+          clean(age),
+          clean(sex),
+          clean(diagnosis),
+          clean(findings),
+          clean(allergy),
+          clean(advice),
+          clean(signature),
+          clean(template),
+        ]
       );
 
       const prescription = prescriptionResult.rows[0];
 
       // 2️⃣ Insert medicines linked to this prescription
-      if (medicines && medicines.length > 0) {
-        const medicineQueries = medicines.map(med =>
+      const safeMedicines = Array.isArray(medicines)
+        ? medicines
+            .map((med) => ({
+              name: clean(med?.name),
+              dosage: clean(med?.dosage),
+              frequency: clean(med?.frequency),
+              duration: clean(med?.duration),
+              notes: clean(med?.notes),
+            }))
+            .filter((med) => Object.values(med).some((value) => value))
+        : [];
+
+      if (safeMedicines.length > 0) {
+        const medicineQueries = safeMedicines.map(med =>
           db.query(
             `INSERT INTO medicines 
               (prescription_id, name, dosage, frequency, duration, notes)

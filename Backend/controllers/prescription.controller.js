@@ -79,7 +79,11 @@ exports.generatePrescriptionPDF = async (req, res) => {
     res.send(pdfBuffer);
   } catch (err) {
     console.error("PDF generation error:", err);
-    res.status(500).json({ message: `Failed to generate PDF: ${err.message}` });
+    const errorMessage =
+      (err && typeof err === "object" && err.message) ||
+      (typeof err === "string" ? err : "") ||
+      "Unknown server error";
+    res.status(500).json({ message: `Failed to generate PDF: ${errorMessage}` });
   } finally {
     if (browser) {
       try {
