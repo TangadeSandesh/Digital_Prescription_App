@@ -40,12 +40,16 @@ export async function fetchPdf(payload) {
     body: JSON.stringify(payload),
   });
 
-  // if (!response.ok) {
-  //   const errData = await response.json();
-  //   throw new Error(errData.message || 'Login failed');
-  // }
+  if (!response.ok) {
+    let message = 'Failed to generate PDF';
+    try {
+      const errData = await response.json();
+      message = errData.message || message;
+    } catch (_) {
+      // ignore JSON parse errors and keep default message
+    }
+    throw new Error(message);
+  }
 
-  // const resData = await response.json();
-  // return resData.token;
   return response;
 }

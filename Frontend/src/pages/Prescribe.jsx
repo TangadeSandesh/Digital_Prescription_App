@@ -74,54 +74,47 @@ export default function Prescribe() {
 
   // 🧾 PDF Generate
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  setIsGenerating(true);
-  const payload = {
-    doctor: {
-      user_id:user.id,
-      name: user?.name,
-      qualification: user?.qualification,
-      hospital: user?.hospital,
-      regNo: user?.regino,   // Registration Number
-      state: "Maharashtra",
-      signature: signature, // base64 image if available
-    },
-    patient: {
-      name: prescription.patientName,
-      age: prescription.age,
-      sex: prescription.sex,
-    },
-    diagnosis: prescription.diagnosis,
-    findings: prescription.findings,
-    allergy: prescription.allergy,
-    advice: prescription.advice,
-    medicines,
+    e.preventDefault();
+    setIsGenerating(true);
+
+    try {
+      const payload = {
+        doctor: {
+          user_id: user?.id,
+          name: user?.name,
+          qualification: user?.qualification,
+          hospital: user?.hospital,
+          regNo: user?.regino,   // Registration Number
+          state: "Maharashtra",
+          signature: signature, // base64 image if available
+        },
+        patient: {
+          name: prescription.patientName,
+          age: prescription.age,
+          sex: prescription.sex,
+        },
+        diagnosis: prescription.diagnosis,
+        findings: prescription.findings,
+        allergy: prescription.allergy,
+        advice: prescription.advice,
+        medicines,
+      };
+
+      const response = await fetchPdf(payload);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = url;
+      a.download = `${prescription.patientName}_Prescription.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "Error generating PDF!");
+    } finally {
+      setIsGenerating(false);
+    }
   };
-
-  const response = await fetchPdf(payload);
-
-  // const response = await fetch("http://localhost:5000/api/prescription/pdf", {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify(payload),
-  // });
-
-  if (response.ok) {
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = `${prescription.patientName}_Prescription.pdf`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    setIsGenerating(false);
-  } else {
-    alert("Error generating PDF!");
-  }
-  
-};
 
   // 🔒 Login redirect
   const handleLoginRedirect = () => {
