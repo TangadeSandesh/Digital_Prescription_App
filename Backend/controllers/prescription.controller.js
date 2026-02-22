@@ -6,12 +6,20 @@ const path = require("path");
 const Prescription = require("../models/prescription.model"); // import the model
 
 exports.generatePrescriptionPDF = async (req, res) => {
+  let browser;
   try {
     const { doctor, patient, diagnosis, findings, allergy, advice, medicines, user_id, signature, template } = req.body;
-    // console.log('request body',req.body);
+    const resolvedUserId = user_id || doctor?.user_id || null;
+
+    if (!doctor || !patient || !patient.name) {
+      return res.status(400).json({ message: "Invalid payload: doctor/patient details are required" });
+    }
+
+    const safeMedicines = Array.isArray(medicines) ? medicines : [];
+
     // 1️⃣ Save prescription and medicines to the database
     const prescription = await Prescription.create({
-      user_id,
+      user_id: resolvedUserId,
       patient_name: patient.name,
       age: patient.age,
       sex: patient.sex,
@@ -19,13 +27,16 @@ exports.generatePrescriptionPDF = async (req, res) => {
       findings,
       allergy,
       advice,
-      signature: signature || null,
+      signature: signature || doctor?.signature || null,
       template: template || null,
-      medicines, // array of medicines
+      medicines: safeMedicines, // array of medicines
     });
 
     // 2️⃣ Generate PDF using the saved data
-    const filePath = path.join(process.cwd(), "templates", "prescriptionTemplate.hbs");
+    const filePath = path.resolve(__dirname, "..", "templates", "prescriptionTemplate.hbs");
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Template not found at ${filePath}`);
+    }
     const html = fs.readFileSync(filePath, "utf8");
 
     const templateCompiler = handlebars.compile(html);
@@ -38,20 +49,18 @@ exports.generatePrescriptionPDF = async (req, res) => {
       findings,
       allergy,
       advice,
-      medicines,
+      medicines: safeMedicines,
       date: new Date().toDateString(),
       prescriptionId: prescription.id,
     });
 
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--no-zygote",
-        "--single-process",
       ],
     });
 
@@ -60,6 +69,7 @@ exports.generatePrescriptionPDF = async (req, res) => {
 
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
     await browser.close();
+    browser = null;
 
     // 3️⃣ Send PDF as response
     res.set({
@@ -69,6 +79,14 @@ exports.generatePrescriptionPDF = async (req, res) => {
     res.send(pdfBuffer);
   } catch (err) {
     console.error("PDF generation error:", err);
-    res.status(500).json({ message: "Failed to generate PDF" });
+    res.status(500).json({ message: `Failed to generate PDF: ${err.message}` });
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (_) {
+        // ignore browser close errors
+      }
+    }
   }
 };
